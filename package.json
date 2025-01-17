@@ -1,0 +1,17 @@
+{
+  "name": "noughts-and-crosses",
+  "version": "1.0.0",
+  "description": "Classic noughts and crosses game",
+  "main": "public/dist/main.js",
+  "scripts": {
+    "build": "rimraf public/dist && tsc",
+    "start": "lite-server",
+    "dev": "npm run build && npm run start",
+    "watch": "tsc -w"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "lite-server": "^2.6.1",
+    "rimraf": "^5.0.0"
+  }
+}

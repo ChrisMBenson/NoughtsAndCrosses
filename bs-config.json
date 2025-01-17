@@ -1,0 +1,11 @@
+{
+  "server": {
+    "baseDir": "public",
+    "routes": {
+      "/dist": "public/dist"
+    }
+  },
+  "port": 3000,
+  "open": false,
+  "logLevel": "info"
+}
