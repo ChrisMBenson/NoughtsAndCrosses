@@ -9,14 +9,19 @@ class NoughtsAndCrosses {
         this.resetButton = document.querySelector('#reset');
         this.pvpModeButton = document.querySelector('#pvp-mode');
         this.pvcModeButton = document.querySelector('#pvc-mode');
+        this.playerXInput = document.querySelector('#player-x');
+        this.playerOInput = document.querySelector('#player-o');
         this.isComputerTurn = false;
         this.gameMode = 'pvp';
+        this.scores = { X: 0, O: 0 };
+        this.playerNames = { X: 'Player X', O: 'Player O' };
         this.initializeGame();
     }
     initializeGame() {
         this.createBoard();
         this.setupEventListeners();
         this.updateStatus();
+        this.updateScores();
     }
     createBoard() {
         if (this.boardElement) {
@@ -42,10 +47,47 @@ class NoughtsAndCrosses {
         if (this.pvcModeButton) {
             this.pvcModeButton.addEventListener('click', () => this.setGameMode('pvc'));
         }
+        if (this.playerXInput) {
+            this.playerXInput.addEventListener('input', () => {
+                var _a;
+                this.playerNames.X = ((_a = this.playerXInput) === null || _a === void 0 ? void 0 : _a.value) || 'Player X';
+            });
+        }
+        if (this.playerOInput) {
+            this.playerOInput.addEventListener('input', () => {
+                var _a;
+                if (this.gameMode === 'pvp') {
+                    this.playerNames.O = ((_a = this.playerOInput) === null || _a === void 0 ? void 0 : _a.value) || 'Player O';
+                }
+            });
+            // Hide player O input initially in PVC mode
+            if (this.gameMode === 'pvc') {
+                this.playerOInput.style.display = 'none';
+            }
+        }
     }
     updateStatus() {
         if (this.statusDisplay) {
-            this.statusDisplay.textContent = `It's ${this.currentPlayer}'s turn`;
+            let playerName = this.playerNames[this.currentPlayer];
+            if (this.gameMode === 'pvc' && this.currentPlayer === 'O') {
+                playerName = 'Computer';
+            }
+            this.statusDisplay.textContent = `It's ${playerName}'s turn`;
+        }
+    }
+    updateScores() {
+        const scoreX = document.getElementById('score-x');
+        const scoreO = document.getElementById('score-o');
+        const nameX = document.getElementById('name-x');
+        const nameO = document.getElementById('name-o');
+        if (scoreX)
+            scoreX.textContent = this.scores.X.toString();
+        if (scoreO)
+            scoreO.textContent = this.scores.O.toString();
+        if (nameX)
+            nameX.textContent = this.playerNames.X;
+        if (nameO) {
+            nameO.textContent = this.gameMode === 'pvc' ? 'Computer' : this.playerNames.O;
         }
     }
     checkGameStatus() {
@@ -56,7 +98,13 @@ class NoughtsAndCrosses {
         ];
         const isWin = winningCombinations.some(combination => combination.every(index => this.board[index] === this.currentPlayer));
         if (isWin) {
-            this.endGame(`${this.currentPlayer} wins!`);
+            this.scores[this.currentPlayer]++;
+            this.updateScores();
+            let winnerName = this.playerNames[this.currentPlayer];
+            if (this.gameMode === 'pvc' && this.currentPlayer === 'O') {
+                winnerName = 'Computer';
+            }
+            this.endGame(`${winnerName} wins!`);
             return;
         }
         if (!this.board.includes('')) {
@@ -70,6 +118,7 @@ class NoughtsAndCrosses {
         if (this.statusDisplay) {
             this.statusDisplay.textContent = message;
         }
+        setTimeout(() => this.resetGame(), 2000);
     }
     switchPlayer() {
         this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
@@ -158,7 +207,6 @@ class NoughtsAndCrosses {
             const [a, b, c] = combination;
             const cellValue = board[a];
             if (cellValue !== '' && cellValue === board[b] && cellValue === board[c]) {
-                // After the above checks, cellValue must be either 'X' or 'O'
                 if (cellValue === 'O')
                     return 1;
                 if (cellValue === 'X')
@@ -191,10 +239,24 @@ class NoughtsAndCrosses {
             if (mode === 'pvp') {
                 this.pvpModeButton.classList.add('active');
                 this.pvcModeButton.classList.remove('active');
+                if (this.playerOInput) {
+                    this.playerOInput.style.display = 'block';
+                }
+                const playerOLabel = document.querySelector('label[for="player-o"]');
+                if (playerOLabel) {
+                    playerOLabel.style.display = 'block';
+                }
             }
             else {
                 this.pvcModeButton.classList.add('active');
                 this.pvpModeButton.classList.remove('active');
+                if (this.playerOInput) {
+                    this.playerOInput.style.display = 'none';
+                }
+                const playerOLabel = document.querySelector('label[for="player-o"]');
+                if (playerOLabel) {
+                    playerOLabel.style.display = 'none';
+                }
             }
         }
     }
@@ -203,3 +265,4 @@ class NoughtsAndCrosses {
 document.addEventListener('DOMContentLoaded', () => {
     new NoughtsAndCrosses();
 });
+//# sourceMappingURL=main.js.map

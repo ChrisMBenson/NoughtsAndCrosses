@@ -13,6 +13,10 @@ class NoughtsAndCrosses {
     private pvcModeButton: HTMLElement | null;
     private isComputerTurn: boolean;
     private gameMode: 'pvp' | 'pvc';
+    private scores: { X: number; O: number };
+    private playerNames: { X: string; O: string };
+    private playerXInput: HTMLInputElement | null;
+    private playerOInput: HTMLInputElement | null;
 
     constructor() {
         this.board = Array(9).fill('');
@@ -23,8 +27,12 @@ class NoughtsAndCrosses {
         this.resetButton = document.querySelector('#reset');
         this.pvpModeButton = document.querySelector('#pvp-mode');
         this.pvcModeButton = document.querySelector('#pvc-mode');
+        this.playerXInput = document.querySelector('#player-x');
+        this.playerOInput = document.querySelector('#player-o');
         this.isComputerTurn = false;
         this.gameMode = 'pvp';
+        this.scores = { X: 0, O: 0 };
+        this.playerNames = { X: 'Player X', O: 'Player O' };
         
         this.initializeGame();
     }
@@ -33,6 +41,7 @@ class NoughtsAndCrosses {
         this.createBoard();
         this.setupEventListeners();
         this.updateStatus();
+        this.updateScores();
     }
 
     private createBoard(): void {
@@ -59,11 +68,46 @@ class NoughtsAndCrosses {
         if (this.pvcModeButton) {
             this.pvcModeButton.addEventListener('click', () => this.setGameMode('pvc'));
         }
+        if (this.playerXInput) {
+            this.playerXInput.addEventListener('input', () => {
+                this.playerNames.X = this.playerXInput?.value || 'Player X';
+            });
+        }
+        if (this.playerOInput) {
+            this.playerOInput.addEventListener('input', () => {
+                if (this.gameMode === 'pvp') {
+                    this.playerNames.O = this.playerOInput?.value || 'Player O';
+                }
+            });
+            // Hide player O input initially in PVC mode
+            if (this.gameMode === 'pvc') {
+                this.playerOInput.style.display = 'none';
+            }
+        }
     }
 
     private updateStatus(): void {
         if (this.statusDisplay) {
-            this.statusDisplay.textContent = `It's ${this.currentPlayer}'s turn`;
+            let playerName = this.playerNames[this.currentPlayer];
+            if (this.gameMode === 'pvc' && this.currentPlayer === 'O') {
+                playerName = 'Computer';
+            }
+            this.statusDisplay.textContent = `It's ${playerName}'s turn`;
+        }
+    }
+
+    private updateScores(): void {
+        const scoreX = document.getElementById('score-x');
+        const scoreO = document.getElementById('score-o');
+        const nameX = document.getElementById('name-x');
+        const nameO = document.getElementById('name-o');
+        
+        if (scoreX) scoreX.textContent = this.scores.X.toString();
+        if (scoreO) scoreO.textContent = this.scores.O.toString();
+        
+        if (nameX) nameX.textContent = this.playerNames.X;
+        if (nameO) {
+            nameO.textContent = this.gameMode === 'pvc' ? 'Computer' : this.playerNames.O;
         }
     }
 
@@ -79,7 +123,13 @@ class NoughtsAndCrosses {
         );
 
         if (isWin) {
-            this.endGame(`${this.currentPlayer} wins!`);
+            this.scores[this.currentPlayer]++;
+            this.updateScores();
+            let winnerName = this.playerNames[this.currentPlayer];
+            if (this.gameMode === 'pvc' && this.currentPlayer === 'O') {
+                winnerName = 'Computer';
+            }
+            this.endGame(`${winnerName} wins!`);
             return;
         }
 
@@ -96,13 +146,14 @@ class NoughtsAndCrosses {
         if (this.statusDisplay) {
             this.statusDisplay.textContent = message;
         }
+        
+        setTimeout(() => this.resetGame(), 2000);
     }
 
     private switchPlayer(): void {
         this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
         this.updateStatus();
     }
-
 
     private resetGame(): void {
         this.board = Array(9).fill('');
@@ -193,7 +244,6 @@ class NoughtsAndCrosses {
             const [a, b, c] = combination;
             const cellValue = board[a];
             if (cellValue !== '' && cellValue === board[b] && cellValue === board[c]) {
-                // After the above checks, cellValue must be either 'X' or 'O'
                 if (cellValue === 'O') return 1;
                 if (cellValue === 'X') return -1;
                 return 0;
@@ -206,8 +256,6 @@ class NoughtsAndCrosses {
 
         return null;
     }
-
-
 
     private handleCellClick(event: Event): void {
         const target = event.target as HTMLElement;
@@ -233,9 +281,23 @@ class NoughtsAndCrosses {
             if (mode === 'pvp') {
                 this.pvpModeButton.classList.add('active');
                 this.pvcModeButton.classList.remove('active');
+                if (this.playerOInput) {
+                    this.playerOInput.style.display = 'block';
+                }
+                const playerOLabel = document.querySelector('label[for="player-o"]') as HTMLElement | null;
+                if (playerOLabel) {
+                    playerOLabel.style.display = 'block';
+                }
             } else {
                 this.pvcModeButton.classList.add('active');
                 this.pvpModeButton.classList.remove('active');
+                if (this.playerOInput) {
+                    this.playerOInput.style.display = 'none';
+                }
+                const playerOLabel = document.querySelector('label[for="player-o"]') as HTMLElement | null;
+                if (playerOLabel) {
+                    playerOLabel.style.display = 'none';
+                }
             }
         }
     }

@@ -8,7 +8,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["ES2016", "DOM"]
+    "lib": ["ES2016", "DOM"],
+    "sourceMap": true
   },
   "include": ["src/**/*"]
 }
