@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "ES6",
+    "outDir": "./public/dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": ["ES2016", "DOM"],
+    "sourceMap": true
+  },
+  "include": ["src/main.ts"],
+  "exclude": ["src/server.ts", "node_modules"]
+}

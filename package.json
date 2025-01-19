@@ -4,14 +4,24 @@
   "description": "Classic noughts and crosses game",
   "main": "public/dist/main.js",
   "scripts": {
-    "build": "rimraf public/dist && tsc",
-    "start": "lite-server",
-    "dev": "npm run build && npm run start",
+    "build:client": "rimraf public/dist && tsc -p tsconfig.client.json",
+    "build:server": "rimraf dist && tsc -p tsconfig.json",
+    "build": "npm run build:client && npm run build:server",
+    "start:client": "lite-server",
+    "start:server": "node dist/server.js",
+    "dev": "npm run build && concurrently \"npm run start:client\" \"npm run start:server\"",
     "watch": "tsc -w"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
+    "concurrently": "^9.1.2",
     "lite-server": "^2.6.1",
-    "rimraf": "^5.0.0"
+    "rimraf": "^5.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/express": "^5.0.0",
+    "@types/ws": "^8.5.13",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
   }
 }

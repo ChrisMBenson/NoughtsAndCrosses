@@ -2,6 +2,23 @@ type Player = 'X' | 'O';
 type Cell = Player | '';
 type Board = Cell[];
 
+interface GameMessage {
+    type: string;
+    player?: Player;
+    position?: number;
+    board?: Board;
+    currentPlayer?: Player;
+    roomId?: string;
+    message?: string;
+    winner?: string;
+}
+
+interface WebSocketGame {
+    socket: WebSocket;
+    roomId: string;
+    player: Player;
+}
+
 class NoughtsAndCrosses {
     private board: Board;
     private currentPlayer: Player;
@@ -11,8 +28,14 @@ class NoughtsAndCrosses {
     private resetButton: HTMLElement | null;
     private pvpModeButton: HTMLElement | null;
     private pvcModeButton: HTMLElement | null;
+    private onlineModeButton: HTMLElement | null;
+    private onlineControls: HTMLElement | null;
+    private createRoomButton: HTMLElement | null;
+    private joinRoomButton: HTMLElement | null;
+    private roomCodeInput: HTMLInputElement | null;
     private isComputerTurn: boolean;
-    private gameMode: 'pvp' | 'pvc';
+    private gameMode: 'pvp' | 'pvc' | 'online';
+    private webSocketGame: WebSocketGame | null;
     private scores: { X: number; O: number };
     private playerNames: { X: string; O: string };
     private playerXInput: HTMLInputElement | null;
@@ -27,14 +50,114 @@ class NoughtsAndCrosses {
         this.resetButton = document.querySelector('#reset');
         this.pvpModeButton = document.querySelector('#pvp-mode');
         this.pvcModeButton = document.querySelector('#pvc-mode');
+        this.onlineModeButton = document.querySelector('#online-mode');
+        this.onlineControls = document.querySelector('#online-controls');
+        this.createRoomButton = document.querySelector('#create-room');
+        this.joinRoomButton = document.querySelector('#join-room');
+        this.roomCodeInput = document.querySelector('#room-code');
         this.playerXInput = document.querySelector('#player-x');
         this.playerOInput = document.querySelector('#player-o');
         this.isComputerTurn = false;
         this.gameMode = 'pvp';
         this.scores = { X: 0, O: 0 };
         this.playerNames = { X: 'Player X', O: 'Player O' };
+        this.webSocketGame = null;
         
         this.initializeGame();
+    }
+
+    private connectToServer(roomId?: string): void {
+        const socket = new WebSocket('ws://localhost:3001');
+        
+        socket.onopen = () => {
+            socket.send(JSON.stringify({
+                type: 'join',
+                roomId
+            }));
+        };
+
+        socket.onmessage = (event) => {
+            const message: GameMessage = JSON.parse(event.data);
+            
+            switch (message.type) {
+                case 'joined':
+                    if (message.player && message.roomId) {
+                        this.webSocketGame = {
+                            socket,
+                            roomId: message.roomId,
+                            player: message.player
+                        };
+                        if (message.board) {
+                            this.board = message.board;
+                            this.updateBoard();
+                        }
+                        if (message.currentPlayer) {
+                            this.currentPlayer = message.currentPlayer;
+                        }
+                        this.statusDisplay!.textContent = `Room Code: ${message.roomId} - You are Player ${message.player}`;
+                    }
+                    break;
+
+                case 'game_start':
+                    this.statusDisplay!.textContent = `Game started! ${this.currentPlayer === this.webSocketGame?.player ? 'Your' : "Opponent's"} turn`;
+                    break;
+
+                case 'move':
+                    if (message.position !== undefined && message.player && message.board) {
+                        this.board = message.board;
+                        this.updateBoard();
+                        this.currentPlayer = message.currentPlayer || 'X';
+                        this.updateStatus();
+                    }
+                    break;
+
+                case 'game_over':
+                    if (message.winner) {
+                        if (message.winner === 'draw') {
+                            this.endGame("It's a draw!");
+                        } else {
+                            const winnerText = message.winner === this.webSocketGame?.player ? 'You win!' : 'Opponent wins!';
+                            this.endGame(winnerText);
+                        }
+                    }
+                    break;
+
+                case 'reset':
+                    if (message.board) {
+                        this.board = message.board;
+                        this.updateBoard();
+                        this.currentPlayer = message.currentPlayer || 'X';
+                        this.gameActive = true;
+                        this.updateStatus();
+                    }
+                    break;
+
+                case 'player_disconnected':
+                    this.statusDisplay!.textContent = 'Opponent disconnected';
+                    this.gameActive = false;
+                    break;
+
+                case 'error':
+                    if (message.message) {
+                        this.statusDisplay!.textContent = `Error: ${message.message}`;
+                    }
+                    break;
+            }
+        };
+
+        socket.onclose = () => {
+            this.statusDisplay!.textContent = 'Disconnected from server';
+            this.gameActive = false;
+            this.webSocketGame = null;
+        };
+    }
+
+    private updateBoard(): void {
+        if (this.boardElement) {
+            Array.from(this.boardElement.children).forEach((cell, index) => {
+                (cell as HTMLElement).textContent = this.board[index];
+            });
+        }
     }
 
     private initializeGame(): void {
@@ -67,6 +190,27 @@ class NoughtsAndCrosses {
         }
         if (this.pvcModeButton) {
             this.pvcModeButton.addEventListener('click', () => this.setGameMode('pvc'));
+        }
+        if (this.onlineModeButton) {
+            this.onlineModeButton.addEventListener('click', () => {
+                if (this.onlineControls) {
+                    this.onlineControls.style.display = 'block';
+                }
+                this.setGameMode('online');
+            });
+        }
+        if (this.createRoomButton) {
+            this.createRoomButton.addEventListener('click', () => {
+                this.setGameMode('online');
+            });
+        }
+        if (this.joinRoomButton && this.roomCodeInput) {
+            this.joinRoomButton.addEventListener('click', () => {
+                const roomCode = this.roomCodeInput?.value;
+                if (roomCode) {
+                    this.setGameMode('online', roomCode);
+                }
+            });
         }
         if (this.playerXInput) {
             this.playerXInput.addEventListener('input', () => {
@@ -261,7 +405,22 @@ class NoughtsAndCrosses {
         const target = event.target as HTMLElement;
         const index = target.dataset.index;
 
-        if (index && this.gameActive && !this.board[+index]) {
+        if (!index || !this.gameActive || this.board[+index]) {
+            return;
+        }
+
+        if (this.gameMode === 'online') {
+            if (!this.webSocketGame || this.currentPlayer !== this.webSocketGame.player) {
+                return;
+            }
+
+            this.webSocketGame.socket.send(JSON.stringify({
+                type: 'move',
+                position: +index,
+                player: this.webSocketGame.player,
+                roomId: this.webSocketGame.roomId
+            }));
+        } else {
             this.board[+index] = this.currentPlayer;
             target.textContent = this.currentPlayer;
             this.checkGameStatus();
@@ -273,30 +432,49 @@ class NoughtsAndCrosses {
         }
     }
 
-    private setGameMode(mode: 'pvp' | 'pvc'): void {
+    private setGameMode(mode: 'pvp' | 'pvc' | 'online', roomId?: string): void {
         this.gameMode = mode;
-        this.resetGame();
         
-        if (this.pvpModeButton && this.pvcModeButton) {
-            if (mode === 'pvp') {
-                this.pvpModeButton.classList.add('active');
-                this.pvcModeButton.classList.remove('active');
-                if (this.playerOInput) {
-                    this.playerOInput.style.display = 'block';
-                }
-                const playerOLabel = document.querySelector('label[for="player-o"]') as HTMLElement | null;
-                if (playerOLabel) {
-                    playerOLabel.style.display = 'block';
-                }
-            } else {
-                this.pvcModeButton.classList.add('active');
-                this.pvpModeButton.classList.remove('active');
-                if (this.playerOInput) {
-                    this.playerOInput.style.display = 'none';
-                }
-                const playerOLabel = document.querySelector('label[for="player-o"]') as HTMLElement | null;
-                if (playerOLabel) {
-                    playerOLabel.style.display = 'none';
+        if (mode === 'online') {
+            this.connectToServer(roomId);
+            if (this.pvpModeButton) this.pvpModeButton.classList.remove('active');
+            if (this.pvcModeButton) this.pvcModeButton.classList.remove('active');
+            if (this.playerOInput) this.playerOInput.style.display = 'none';
+            const playerOLabel = document.querySelector('label[for="player-o"]') as HTMLElement | null;
+            if (playerOLabel) playerOLabel.style.display = 'none';
+        } else {
+            if (this.webSocketGame) {
+                this.webSocketGame.socket.close();
+                this.webSocketGame = null;
+            }
+            
+            this.resetGame();
+            
+            if (this.pvpModeButton && this.pvcModeButton && this.onlineModeButton && this.onlineControls) {
+                if (mode === 'pvp') {
+                    this.pvpModeButton.classList.add('active');
+                    this.pvcModeButton.classList.remove('active');
+                    this.onlineModeButton.classList.remove('active');
+                    this.onlineControls.style.display = 'none';
+                    if (this.playerOInput) {
+                        this.playerOInput.style.display = 'block';
+                    }
+                    const playerOLabel = document.querySelector('label[for="player-o"]') as HTMLElement | null;
+                    if (playerOLabel) {
+                        playerOLabel.style.display = 'block';
+                    }
+                } else {
+                    this.pvcModeButton.classList.add('active');
+                    this.pvpModeButton.classList.remove('active');
+                    this.onlineModeButton.classList.remove('active');
+                    this.onlineControls.style.display = 'none';
+                    if (this.playerOInput) {
+                        this.playerOInput.style.display = 'none';
+                    }
+                    const playerOLabel = document.querySelector('label[for="player-o"]') as HTMLElement | null;
+                    if (playerOLabel) {
+                        playerOLabel.style.display = 'none';
+                    }
                 }
             }
         }

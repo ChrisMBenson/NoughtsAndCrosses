@@ -51,6 +51,46 @@ h1 {
     background-color: #ccc;
 }
 
+.online-controls {
+    margin: 1rem 0;
+}
+
+.room-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+}
+
+.join-room {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.room-button {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    background-color: #333;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.room-button:hover {
+    background-color: #555;
+}
+
+#room-code {
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 150px;
+}
+
 .game-container {
     display: flex;
     gap: 2rem;
